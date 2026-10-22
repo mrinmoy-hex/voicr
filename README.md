@@ -44,7 +44,7 @@ Run **fully offline** with a local model, or add `--cloud` to route transcriptio
 
 - **Hold-to-talk hotkey** — configurable combo (`Ctrl+Space` by default), pastes into the active window automatically
 - **Daemon mode** — persistent background process, scriptable over a Unix socket with newline-delimited JSON
-- **Local Web UI** — built-in web configuration dashboard (`http://127.0.0.1:7898`) to switch models, tune settings, and pick audio devices
+- **Local Web UI** — built-in token-protected configuration dashboard (`http://127.0.0.1:7898`): a dark, console-style dashboard covering every setting — switch models, tune VAD/hotkey/language, pick audio devices, and configure cloud providers
 - **Multiple engines** — Parakeet, Moonshine (streaming), SenseVoice, GigaAM, Whisper (including custom `.bin` auto-discovery)
 - **Multi-provider Cloud mode** — route transcription through **Groq**, **OpenAI**, **Sarvam AI**, or any custom OpenAI-compatible endpoint with dynamic model fetching
 - **Auto-start on login** — single-command or one-click toggle to automatically start voicr when logging into your desktop
@@ -280,22 +280,24 @@ voicr autostart status                # print current autostart status
 
 ## Web Configuration UI
 
-When the daemon is running, voicr serves a clean, lightweight web configuration dashboard locally at:
+When the daemon is running, voicr serves a dark, console-style configuration dashboard locally at:
 
 ```
 http://127.0.0.1:7898
 ```
 
-> The UI requires an access token: open the `?token=` URL the daemon prints at startup (also stored in `ui_token` inside the voicr data directory). Without the token you get a short explanation page instead of the dashboard.
+> **Access token required.** Every route — the page itself and all `/api/*` endpoints — needs the token: open the `?token=` URL the daemon prints at startup (also stored in `ui_token` inside the voicr data directory with owner-only permissions). Without it you get a 401.
 
-From the UI, you can:
-- View the active transcription mode (Local model vs Cloud provider)
-- Select your audio input device with system default detection
-- Switch and download local models with real-time download progress
-- Configure and test Cloud providers (Groq, OpenAI, Sarvam AI, Custom) and fetch their STT models
-- Tune VAD sensitivity, hotkey combos, language detection, and output targets
-- Toggle system login autostart with a single click
-- Save settings and restart the background daemon smoothly
+The dashboard is a single self-contained page served directly from the binary: all styles are precompiled and inlined, so it renders identically with no internet access (fonts load as a progressive enhancement).
+
+All settings pages live in a sidebar with a live status strip (daemon state, port, version):
+
+- **Model** — a model gallery with per-model status badges (Loaded / Ready on disk / Downloading / Not downloaded), architecture captions, disk sizes, a live search filter, and explicit **Download / Switch to** buttons. A **Local | Cloud** banner on the same page toggles the active transcription mode
+- **Hotkey / Audio / Transcription / Output / History** — settings cards with hints for every option
+- **Cloud** — provider selection (Groq, OpenAI, Sarvam AI, Custom) with API keys and dynamic **Fetch Models**
+- **System** — autostart-on-login toggle and the Web UI port
+
+Changes are staged in the browser; press **Save** (or `Ctrl+S`) to write them, and **Restart daemon** when a change needs a fresh daemon (hotkey combo, web port). Model selection applies instantly — a running model hot-swaps without dropping the hotkey.
 
 ---
 
