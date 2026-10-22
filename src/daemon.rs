@@ -99,6 +99,26 @@ static CLIENT_COUNTER: AtomicU64 = AtomicU64::new(0);
 /// Each entry is (client_id, sender). broadcast() retains only live senders.
 type Clients = Arc<Mutex<Vec<(u64, UnboundedSender<String>)>>>;
 
+/// Every graceful shutdown arms a short timer that force-exits the process.
+///
+/// Without this, shutdown signals become a hang: `run_daemon` does complete
+/// and log "Daemon shut down", but the `#[tokio::main]` runtime drop then
+/// parks forever in its blocking-pool shutdown condvar, because the web UI
+/// thread stays parked inside tiny_http's accept loop (which never returns
+/// on its own). The 250 ms grace window lets the final broadcast and log
+/// lines land; `exit` then always terminates the process.
+fn arm_forced_exit() {
+    std::thread::Builder::new()
+        .name("forced-exit".into())
+        .spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(250));
+            use std::io::Write as _;
+            let _ = std::io::stdout().flush();
+            std::process::exit(0);
+        })
+        .ok();
+}
+
 fn broadcast(clients: &Clients, event: &Event) {
     let json = match serde_json::to_string(event) {
         Ok(j) => format!("{}\n", j),
@@ -199,6 +219,7 @@ pub async fn run_daemon(
         info!("Shutdown signal received");
         shutdown_clone.store(true, Ordering::Relaxed);
         notify_clone.notify_one();
+        arm_forced_exit();
     })
     .ok();
 
@@ -545,6 +566,7 @@ async fn handle_client<S>(
                 shutdown_flag.store(true, Ordering::Relaxed);
                 broadcast(&clients, &Event::Shutdown);
                 shutdown_notify.notify_one();
+                arm_forced_exit();
                 break;
             }
             unknown => {

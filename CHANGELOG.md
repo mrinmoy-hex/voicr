@@ -1,5 +1,8 @@
 ## v0.4.1 — Unreleased
 
+### Fixed: daemon shutdown hang (SIGTERM / SIGINT / `send shutdown`)
+- Sending SIGTERM or SIGINT to the foreground daemon, or using the Restart button / `voicr send shutdown`, left the process running after logging "Daemon shut down" — it parked forever in the tokio runtime's blocking-pool shutdown while the web UI thread stayed parked inside tiny_http's accept loop. All shutdown entry points now arm a 250 ms forced-exit timer, so the process actually terminates; final events and log lines still complete within the grace window.
+
 ### Security: Web UI access token
 - The local web UI (`http://127.0.0.1:7898`) now requires an access token. Requests to the UI page and every `/api/*` route must carry either `?token=` or `Authorization: Bearer <token>` — any local process/viewing page can no longer read the config (which contains cloud API keys) unauthenticated.
 - The token is generated once at first daemon start and stored with owner-only permissions at `ui_token` inside the voicr data directory, so the URL survives daemon restarts and the Web UI restart button.

@@ -13,7 +13,9 @@ use anyhow::Result;
 use clap::Parser;
 use cli::{AutostartCommands, Cli, Commands, ConfigCommands, HistoryCommands, ModelCommands};
 use config::Config;
+use log::{error, info};
 use managers::model::ModelManager;
+use std::io::Write as _;
 use std::sync::{Arc, Mutex};
 
 #[tokio::main]
@@ -165,7 +167,24 @@ async fn cmd_daemon(
     // Clean up PID file on exit
     let _ = std::fs::remove_file(&pid_path);
 
-    result
+    // The web UI thread parks inside tiny_http's accept loop, and the tokio
+    // runtime shutdown never finishes while it's alive — so after signals like
+    // SIGTERM/SIGINT or a `send shutdown` command the process would keep
+    // running (mostly idle) even though `run_daemon` has returned cleanly.
+    // Everything that matters has already happened at this point (events
+    // broadcast, socket and PID files removed), so exit the process here.
+    let _ = std::io::stdout().flush();
+    let exit_code = match result {
+        Ok(()) => 0,
+        Err(e) => {
+            error!("Daemon error: {}", e);
+            1
+        }
+    };
+    // Preserve a shutdown trace in the log: after exiting, no other thread
+    // (including the signal handler) gets to write.
+    info!("Daemon shut down");
+    std::process::exit(exit_code);
 }
 
 /// Daemonize by re-spawning the current process with --foreground,
