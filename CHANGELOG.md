@@ -1,4 +1,4 @@
-## v0.4.1 — Unreleased
+## What's New in v0.4.1
 
 ### Changed: full Web UI redesign (dark premium theme)
 - The entire dashboard (every page: Model, Hotkey, Audio, Transcription, Output, History, Cloud, System) now uses a modern dark "console-style" design — new layout with a sidebar navigation, a status header (daemon state, port, version), a sticky action footer, and emerald accent styling.
