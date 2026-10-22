@@ -286,6 +286,8 @@ When the daemon is running, voicr serves a clean, lightweight web configuration 
 http://127.0.0.1:7898
 ```
 
+> The UI requires an access token: open the `?token=` URL the daemon prints at startup (also stored in `ui_token` inside the voicr data directory). Without the token you get a short explanation page instead of the dashboard.
+
 From the UI, you can:
 - View the active transcription mode (Local model vs Cloud provider)
 - Select your audio input device with system default detection

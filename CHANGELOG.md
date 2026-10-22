@@ -1,3 +1,12 @@
+## v0.4.1 — Unreleased
+
+### Security: Web UI access token
+- The local web UI (`http://127.0.0.1:7898`) now requires an access token. Requests to the UI page and every `/api/*` route must carry either `?token=` or `Authorization: Bearer <token>` — any local process/viewing page can no longer read the config (which contains cloud API keys) unauthenticated.
+- The token is generated once at first daemon start and stored with owner-only permissions at `ui_token` inside the voicr data directory, so the URL survives daemon restarts and the Web UI restart button.
+- The daemon prints the ready-to-open URL (`http://127.0.0.1:7898/?token=…`) at startup; the built-in UI sends the token automatically.
+
+---
+
 ## What's New in v0.4.0
 
 ### Local Web UI for Settings & Configuration

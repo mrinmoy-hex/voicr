@@ -364,6 +364,20 @@
 <script>
 let config = null;
 
+// Filled in by the daemon when it serves this page. The page's fetches carry
+// it as a Bearer header; the URL it was opened with already carried it as
+// ?token= so the daemon would serve the real value in the first place.
+const VOICR_TOKEN = "__VOICR_TOKEN__";
+
+async function apiFetch(url, opts = {}) {
+  if (VOICR_TOKEN && !VOICR_TOKEN.startsWith('__')) {
+    opts.headers = Object.assign({}, opts.headers, {
+      Authorization: 'Bearer ' + VOICR_TOKEN,
+    });
+  }
+  return fetch(url, opts);
+}
+
 function get(obj, path) {
   return path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
 }
@@ -480,7 +494,7 @@ document.getElementById('fetch-models-btn').addEventListener('click', async () =
   }
   
   try {
-    const res = await fetch('/api/cloud_models', { cache: 'no-store' });
+    const res = await apiFetch('/api/cloud_models', { cache: 'no-store' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to fetch models');
     
@@ -529,7 +543,7 @@ function collectForm() {
 
 async function loadAudioDevices() {
   try {
-    const res = await fetch('/api/audio_devices', { cache: 'no-store' });
+    const res = await apiFetch('/api/audio_devices', { cache: 'no-store' });
     const devices = await res.json();
     const select = document.getElementById('audio-device-select');
     select.innerHTML = '<option value="">System Default</option>';
@@ -545,7 +559,7 @@ async function loadAudioDevices() {
 }
 
 async function loadConfig() {
-  const res = await fetch('/api/config', { cache: 'no-store' });
+  const res = await apiFetch('/api/config', { cache: 'no-store' });
   config = await res.json();
   await loadAudioDevices();
   populateForm();
@@ -564,7 +578,7 @@ function scheduleModelPoll(active) {
 }
 
 async function loadModels() {
-  const res = await fetch('/api/models', { cache: 'no-store' });
+  const res = await apiFetch('/api/models', { cache: 'no-store' });
   const models = await res.json();
 
   // Model selection has no form field of its own — keep the cached config's
@@ -613,14 +627,14 @@ async function loadModels() {
         row.title = m.is_downloaded ? 'Click to select' : 'Click to download and select';
         row.addEventListener('click', async () => {
           if (m.is_downloaded) {
-            await fetch('/api/models/select', {
+            await apiFetch('/api/models/select', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id: m.id }),
             });
           } else {
             pendingDownloads.add(m.id);
-            await fetch('/api/models/download', {
+            await apiFetch('/api/models/download', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id: m.id }),
@@ -689,7 +703,7 @@ function confirmDialog(message, { title = 'voicr', confirmLabel = 'Confirm', can
 async function saveConfig() {
   collectForm();
   try {
-    const res = await fetch('/api/config', {
+    const res = await apiFetch('/api/config', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config),
@@ -726,7 +740,7 @@ document.getElementById('restart').addEventListener('click', async () => {
   }
   toast('Restarting daemon…');
   try {
-    await fetch('/api/restart', { method: 'POST' });
+    await apiFetch('/api/restart', { method: 'POST' });
   } catch (e) {
     // The connection drops as part of the restart — expected, not an error.
   }
@@ -734,7 +748,7 @@ document.getElementById('restart').addEventListener('click', async () => {
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 500));
     try {
-      const res = await fetch('/api/config', { cache: 'no-store' });
+      const res = await apiFetch('/api/config', { cache: 'no-store' });
       if (res.ok) {
         toast('Back up — reloading');
         location.reload();
@@ -750,7 +764,7 @@ document.getElementById('restart').addEventListener('click', async () => {
 
 async function loadAutostart() {
   try {
-    const res = await fetch('/api/autostart', { cache: 'no-store' });
+    const res = await apiFetch('/api/autostart', { cache: 'no-store' });
     const data = await res.json();
     const cb = document.getElementById('autostart-checkbox');
     if (cb) cb.checked = !!data.enabled;
@@ -762,7 +776,7 @@ async function loadAutostart() {
 document.getElementById('autostart-checkbox').addEventListener('change', async e => {
   const enabled = e.target.checked;
   try {
-    const res = await fetch('/api/autostart', {
+    const res = await apiFetch('/api/autostart', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enabled }),
@@ -776,6 +790,9 @@ document.getElementById('autostart-checkbox').addEventListener('change', async e
   }
 });
 
+if (!VOICR_TOKEN || VOICR_TOKEN.startsWith('__')) {
+  toast('Not authorized — open the ?token= URL printed by the daemon at startup', 'error');
+}
 loadConfig();
 loadAutostart();
 loadModels();
