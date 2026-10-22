@@ -25,6 +25,9 @@ const SARVAM_SVG: &str = include_str!("../icons/sarvam.svg");
 /// Placeholder in `web_ui.html` replaced with the real token when served.
 const TOKEN_PLACEHOLDER: &str = "__VOICR_TOKEN__";
 
+/// Placeholder in the UI HTML replaced with the crate version at serve time.
+const VERSION_PLACEHOLDER: &str = "__VOICR_VERSION__";
+
 /// Latest progress for each model currently downloading, keyed by model id.
 /// Entries are removed once the download finishes (success or failure).
 pub type DownloadProgressMap = Arc<Mutex<HashMap<String, DownloadProgress>>>;
@@ -98,7 +101,9 @@ fn handle(
     match (&method, path) {
         (Method::Get, "/") => {
             // The page gets the token baked in so its own fetches are authorized.
-            let html = UI_HTML.replace(TOKEN_PLACEHOLDER, token);
+            let html = UI_HTML
+                .replace(TOKEN_PLACEHOLDER, token)
+                .replace(VERSION_PLACEHOLDER, env!("CARGO_PKG_VERSION"));
             respond_html(request, &html)
         }
         (Method::Get, "/icon.png") => respond_png(request, ICON_PNG),
@@ -619,5 +624,15 @@ mod tests {
             !first.contains("__"),
             "token must be safe to inline into HTML/JS"
         );
+    }
+
+    #[test]
+    fn ui_html_placeholders_are_replaced() {
+        let html = UI_HTML
+            .replace(TOKEN_PLACEHOLDER, TOKEN)
+            .replace(VERSION_PLACEHOLDER, env!("CARGO_PKG_VERSION"));
+        assert!(!html.contains(TOKEN_PLACEHOLDER));
+        assert!(!html.contains(VERSION_PLACEHOLDER));
+        assert!(html.contains(env!("CARGO_PKG_VERSION")));
     }
 }

@@ -1,5 +1,12 @@
 ## v0.4.1 — Unreleased
 
+### Changed: full Web UI redesign (dark premium theme)
+- The entire dashboard (every page: Model, Hotkey, Audio, Transcription, Output, History, Cloud, System) now uses a modern dark "console-style" design — new layout with a sidebar navigation, a status header (daemon state, port, version), a sticky action footer, and emerald accent styling.
+- All styling is precompiled and served locally — no CDN calls at runtime, so the UI still works with no internet (Google Fonts load as a progressive enhancement).
+- Model list upgraded: per-model status badges (Loaded / Ready on disk / Downloading / Not downloaded), model architecture captions, live search filter, explicit Download / Switch to buttons (row click still works), a real "N Available" count and real on-disk storage total.
+- Local / Cloud can now be toggled from the Model page banner (it edits the same form state — press Save to persist, as before).
+- All previous behavior is preserved: token-authorized `apiFetch`, Save writes the whole config, Restart asks for confirmation, autostart toggle hits its own endpoint.
+
 ### Fixed: daemon shutdown hang (SIGTERM / SIGINT / `send shutdown`)
 - Sending SIGTERM or SIGINT to the foreground daemon, or using the Restart button / `voicr send shutdown`, left the process running after logging "Daemon shut down" — it parked forever in the tokio runtime's blocking-pool shutdown while the web UI thread stayed parked inside tiny_http's accept loop. All shutdown entry points now arm a 250 ms forced-exit timer, so the process actually terminates; final events and log lines still complete within the grace window.
 
